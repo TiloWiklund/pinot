@@ -1,1 +1,2 @@
-# pandoc-notebook
+# pinot
+pandoc for notebooks
