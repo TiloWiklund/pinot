@@ -6,7 +6,6 @@ import Data.Default (def)
 import qualified Data.Default as D
 import Data.Text (Text, unpack)
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
 import Data.Aeson
 import Data.Monoid ((<>))
 import Data.Traversable (mapAccumL)
@@ -14,7 +13,7 @@ import qualified Data.ByteString.Lazy as B
 import qualified Data.HashMap.Lazy as H
 import qualified Text.Pandoc.Builder as P
 import Control.Lens hiding ((.=))
-
+import Utils
 import qualified Notebook as N
 
 -- jsonType :: Value -> String
@@ -30,150 +29,150 @@ import qualified Notebook as N
 -- jsonKeys _ = []
 
 data DBNotebook = DBN { _dbnCommands     :: [DBCommand]
-                      , _dbnDashboards   :: [Value]
-                      , _dbnIPythonMeta  :: Value
-                      , _dbnInputWidgets :: Value
+                      , _dbnDashboards   :: Maybe [Value]
+                      , _dbnIPythonMeta  :: Maybe Value
+                      , _dbnInputWidgets :: Maybe Value
                       , _dbnName         :: Text
-                      , _dbnGuid         :: Text
-                      , _dbnVersion      :: Value -- some sort of enum
+                      , _dbnGuid         :: Maybe Text
+                      , _dbnVersion      :: Maybe Value -- some sort of enum
                       , _dbnLanguage     :: Text
-                      , _dbnGlobalVars   :: Value
-                      , _dbnOrigID       :: Value } -- Integer?
+                      , _dbnGlobalVars   :: Maybe Value
+                      , _dbnOrigID       :: Maybe Value } -- Integer?
   deriving Show
 
 instance D.Default DBNotebook where
-  def = DBN [] [] Null Null "" "" Null "" Null Null
+  def = DBN [] Nothing Nothing Nothing "" Nothing Nothing "md" Nothing Nothing
 
-data DBCommand = DBC { _dbcCustomPlotOptions :: Value
-                     , _dbcErrorSummary      :: Value
-                     , _dbcHeight            :: Value
-                     , _dbcDiffDeletes       :: Value
-                     , _dbcCommandTitle      :: Text
-                     , _dbcState             :: Value
+data DBCommand = DBC { _dbcCustomPlotOptions :: Maybe Value
+                     , _dbcErrorSummary      :: Maybe Value
+                     , _dbcHeight            :: Maybe Value
+                     , _dbcDiffDeletes       :: Maybe Value
+                     , _dbcCommandTitle      :: Maybe Text
+                     , _dbcState             :: Maybe Value
                      , _dbcCommand           :: Text
-                     , _dbcResults           :: Value
-                     , _dbcCommandVersion    :: Value
-                     , _dbcXColumns          :: Value
-                     , _dbcStartTime         :: Value
-                     , _dbcIPythonMetadata   :: Value
-                     , _dbcError             :: Value
-                     , _dbcPivotAggregation  :: Value
-                     , _dbcWidth             :: Value
-                     , _dbcNuid              :: Text
-                     , _dbcPivotColumns      :: Value
-                     , _dbcInputWidgets      :: Value
-                     , _dbcSubtype           :: Value
-                     , _dbcYColumns          :: Value
-                     , _dbcShowCommandTitle  :: Value
-                     , _dbcGuid              :: Text
-                     , _dbcCommandType       :: Value
-                     , _dbcCollapsed         :: Value
-                     , _dbcVersion           :: Value
-                     , _dbcLatestUser        :: Value
-                     , _dbcBindings          :: Value
-                     , _dbcHideCommandCode   :: Bool
-                     , _dbcDisplayType       :: Value
-                     , _dbcGlobalVars        :: Value
-                     , _dbcCommentThread     :: Value
-                     , _dbcWorkflows         :: Value
-                     , _dbcParentHierarchy   :: Value
-                     , _dbcHideCommandResult :: Bool
-                     , _dbcFinishTime        :: Value
-                     , _dbcCommentsVisible   :: Value
-                     , _dbcOrigId            :: Value
-                     , _dbcSubmitTime        :: Value
-                     , _dbcDiffInserts       :: Value
-                     , _dbcPosition          :: Value }
+                     , _dbcResults           :: Maybe Value
+                     , _dbcCommandVersion    :: Maybe Value
+                     , _dbcXColumns          :: Maybe Value
+                     , _dbcStartTime         :: Maybe Value
+                     , _dbcIPythonMetadata   :: Maybe Value
+                     , _dbcError             :: Maybe Value
+                     , _dbcPivotAggregation  :: Maybe Value
+                     , _dbcWidth             :: Maybe Value
+                     , _dbcNuid              :: Maybe Text
+                     , _dbcPivotColumns      :: Maybe Value
+                     , _dbcInputWidgets      :: Maybe Value
+                     , _dbcSubtype           :: Maybe Value
+                     , _dbcYColumns          :: Maybe Value
+                     , _dbcShowCommandTitle  :: Maybe Value
+                     , _dbcGuid              :: Maybe Text
+                     , _dbcCommandType       :: Maybe Value
+                     , _dbcCollapsed         :: Maybe Value
+                     , _dbcVersion           :: Maybe Value
+                     , _dbcLatestUser        :: Maybe Value
+                     , _dbcBindings          :: Maybe Value
+                     , _dbcHideCommandCode   :: Maybe Bool
+                     , _dbcDisplayType       :: Maybe Value
+                     , _dbcGlobalVars        :: Maybe Value
+                     , _dbcCommentThread     :: Maybe Value
+                     , _dbcWorkflows         :: Maybe Value
+                     , _dbcParentHierarchy   :: Maybe Value
+                     , _dbcHideCommandResult :: Maybe Bool
+                     , _dbcFinishTime        :: Maybe Value
+                     , _dbcCommentsVisible   :: Maybe Value
+                     , _dbcOrigId            :: Maybe Value
+                     , _dbcSubmitTime        :: Maybe Value
+                     , _dbcDiffInserts       :: Maybe Value
+                     , _dbcPosition          :: Maybe Value }
   deriving Show
 
 makeLenses ''DBNotebook
 makeLenses ''DBCommand
 
 instance D.Default DBCommand where
-  def = DBC Null Null Null Null "" Null "" Null Null Null Null Null Null Null Null "" Null Null Null Null Null "" Null Null Null Null Null False Null Null Null Null Null False Null Null Null Null Null Null
+  def = DBC Nothing Nothing Nothing Nothing Nothing Nothing "" Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 instance ToJSON DBCommand where
-  toJSON dbc = object [ "customPlotOptions" .= (dbc^.dbcCustomPlotOptions)
-                      , "errorSummary" .= (dbc^.dbcErrorSummary)
-                      , "height" .= (dbc^.dbcHeight)
-                      , "diffDeletes" .= (dbc^.dbcDiffDeletes)
-                      , "commandTitle" .= (dbc^.dbcCommandTitle)
-                      , "state" .= (dbc^.dbcState)
-                      , "command" .= (dbc^.dbcCommand)
-                      , "results" .= (dbc^.dbcResults)
-                      , "commandVersion" .= (dbc^.dbcCommandVersion)
-                      , "xColumns" .= (dbc^.dbcXColumns)
-                      , "startTime" .= (dbc^.dbcStartTime)
-                      , "iPythonMetadata" .= (dbc^.dbcIPythonMetadata)
-                      , "error" .= (dbc^.dbcError)
-                      , "pivotAggregation" .= (dbc^.dbcPivotAggregation)
-                      , "width" .= (dbc^.dbcWidth)
-                      , "nuid" .= (dbc^.dbcNuid)
-                      , "pivotColumns" .= (dbc^.dbcPivotColumns)
-                      , "inputWidgets" .= (dbc^.dbcInputWidgets)
-                      , "subtype" .= (dbc^.dbcSubtype)
-                      , "yColumns" .= (dbc^.dbcYColumns)
-                      , "showCommandTitle" .= (dbc^.dbcShowCommandTitle)
-                      , "guid" .= (dbc^.dbcGuid)
-                      , "commandType" .= (dbc^.dbcCommandType)
-                      , "collapsed" .= (dbc^.dbcCollapsed)
-                      , "version" .= (dbc^.dbcVersion)
-                      , "latestUser" .= (dbc^.dbcLatestUser)
-                      , "bindings" .= (dbc^.dbcBindings)
-                      , "hideCommandCode" .= (dbc^.dbcHideCommandCode)
-                      , "displayType" .= (dbc^.dbcDisplayType)
-                      , "globalVars" .= (dbc^.dbcGlobalVars)
-                      , "commentThread" .= (dbc^.dbcCommentThread)
-                      , "workflows" .= (dbc^.dbcWorkflows)
-                      , "parentHierarchy" .= (dbc^.dbcParentHierarchy)
-                      , "hideCommandResult" .= (dbc^.dbcHideCommandResult)
-                      , "finishTime" .= (dbc^.dbcFinishTime)
-                      , "commentsVisible" .= (dbc^.dbcCommentsVisible)
-                      , "origId" .= (dbc^.dbcOrigId)
-                      , "submitTime" .= (dbc^.dbcSubmitTime)
-                      , "diffInserts" .= (dbc^.dbcDiffInserts)
-                      , "position" .= (dbc^.dbcPosition) ]
+  toJSON dbc = objectMaybe [ "customPlotOptions" .=? (dbc^.dbcCustomPlotOptions)
+                           , "errorSummary" .=? (dbc^.dbcErrorSummary)
+                           , "height" .=? (dbc^.dbcHeight)
+                           , "diffDeletes" .=? (dbc^.dbcDiffDeletes)
+                           , "commandTitle" .=? (dbc^.dbcCommandTitle)
+                           , "state" .=? (dbc^.dbcState)
+                           , "command" .= (dbc^.dbcCommand)
+                           , "results" .=? (dbc^.dbcResults)
+                           , "commandVersion" .=? (dbc^.dbcCommandVersion)
+                           , "xColumns" .=? (dbc^.dbcXColumns)
+                           , "startTime" .=? (dbc^.dbcStartTime)
+                           , "iPythonMetadata" .=? (dbc^.dbcIPythonMetadata)
+                           , "error" .=? (dbc^.dbcError)
+                           , "pivotAggregation" .=? (dbc^.dbcPivotAggregation)
+                           , "width" .=? (dbc^.dbcWidth)
+                           , "nuid" .=? (dbc^.dbcNuid)
+                           , "pivotColumns" .=? (dbc^.dbcPivotColumns)
+                           , "inputWidgets" .=? (dbc^.dbcInputWidgets)
+                           , "subtype" .=? (dbc^.dbcSubtype)
+                           , "yColumns" .=? (dbc^.dbcYColumns)
+                           , "showCommandTitle" .=? (dbc^.dbcShowCommandTitle)
+                           , "guid" .=? (dbc^.dbcGuid)
+                           , "commandType" .=? (dbc^.dbcCommandType)
+                           , "collapsed" .=? (dbc^.dbcCollapsed)
+                           , "version" .=? (dbc^.dbcVersion)
+                           , "latestUser" .=? (dbc^.dbcLatestUser)
+                           , "bindings" .=? (dbc^.dbcBindings)
+                           , "hideCommandCode" .=? (dbc^.dbcHideCommandCode)
+                           , "displayType" .=? (dbc^.dbcDisplayType)
+                           , "globalVars" .=? (dbc^.dbcGlobalVars)
+                           , "commentThread" .=? (dbc^.dbcCommentThread)
+                           , "workflows" .=? (dbc^.dbcWorkflows)
+                           , "parentHierarchy" .=? (dbc^.dbcParentHierarchy)
+                           , "hideCommandResult" .=? (dbc^.dbcHideCommandResult)
+                           , "finishTime" .=? (dbc^.dbcFinishTime)
+                           , "commentsVisible" .=? (dbc^.dbcCommentsVisible)
+                           , "origId" .=? (dbc^.dbcOrigId)
+                           , "submitTime" .=? (dbc^.dbcSubmitTime)
+                           , "diffInserts" .=? (dbc^.dbcDiffInserts)
+                           , "position" .=? (dbc^.dbcPosition) ]
 
-  toEncoding dbc = pairs ( "customPlotOptions" .= (dbc^.dbcCustomPlotOptions)
-                           <> "errorSummary" .= (dbc^.dbcErrorSummary)
-                           <> "height" .= (dbc^.dbcHeight)
-                           <> "diffDeletes" .= (dbc^.dbcDiffDeletes)
-                           <> "commandTitle" .= (dbc^.dbcCommandTitle)
-                           <> "state" .= (dbc^.dbcState)
+  toEncoding dbc = pairs ( "customPlotOptions" .=? (dbc^.dbcCustomPlotOptions)
+                           <> "errorSummary" .=? (dbc^.dbcErrorSummary)
+                           <> "height" .=? (dbc^.dbcHeight)
+                           <> "diffDeletes" .=? (dbc^.dbcDiffDeletes)
+                           <> "commandTitle" .=? (dbc^.dbcCommandTitle)
+                           <> "state" .=? (dbc^.dbcState)
                            <> "command" .= (dbc^.dbcCommand)
-                           <> "results" .= (dbc^.dbcResults)
-                           <> "commandVersion" .= (dbc^.dbcCommandVersion)
-                           <> "xColumns" .= (dbc^.dbcXColumns)
-                           <> "startTime" .= (dbc^.dbcStartTime)
-                           <> "iPythonMetadata" .= (dbc^.dbcIPythonMetadata)
-                           <> "error" .= (dbc^.dbcError)
-                           <> "pivotAggregation" .= (dbc^.dbcPivotAggregation)
-                           <> "width" .= (dbc^.dbcWidth)
-                           <> "nuid" .= (dbc^.dbcNuid)
-                           <> "pivotColumns" .= (dbc^.dbcPivotColumns)
-                           <> "inputWidgets" .= (dbc^.dbcInputWidgets)
-                           <> "subtype" .= (dbc^.dbcSubtype)
-                           <> "yColumns" .= (dbc^.dbcYColumns)
-                           <> "showCommandTitle" .= (dbc^.dbcShowCommandTitle)
-                           <> "guid" .= (dbc^.dbcGuid)
-                           <> "commandType" .= (dbc^.dbcCommandType)
-                           <> "collapsed" .= (dbc^.dbcCollapsed)
-                           <> "version" .= (dbc^.dbcVersion)
-                           <> "latestUser" .= (dbc^.dbcLatestUser)
-                           <> "bindings" .= (dbc^.dbcBindings)
-                           <> "hideCommandCode" .= (dbc^.dbcHideCommandCode)
-                           <> "displayType" .= (dbc^.dbcDisplayType)
-                           <> "globalVars" .= (dbc^.dbcGlobalVars)
-                           <> "commentThread" .= (dbc^.dbcCommentThread)
-                           <> "workflows" .= (dbc^.dbcWorkflows)
-                           <> "parentHierarchy" .= (dbc^.dbcParentHierarchy)
-                           <> "hideCommandResult" .= (dbc^.dbcHideCommandResult)
-                           <> "finishTime" .= (dbc^.dbcFinishTime)
-                           <> "commentsVisible" .= (dbc^.dbcCommentsVisible)
-                           <> "origId" .= (dbc^.dbcOrigId)
-                           <> "submitTime" .= (dbc^.dbcSubmitTime)
-                           <> "diffInserts" .= (dbc^.dbcDiffInserts)
-                           <> "position" .= (dbc^.dbcPosition) )
+                           <> "results" .=? (dbc^.dbcResults)
+                           <> "commandVersion" .=? (dbc^.dbcCommandVersion)
+                           <> "xColumns" .=? (dbc^.dbcXColumns)
+                           <> "startTime" .=? (dbc^.dbcStartTime)
+                           <> "iPythonMetadata" .=? (dbc^.dbcIPythonMetadata)
+                           <> "error" .=? (dbc^.dbcError)
+                           <> "pivotAggregation" .=? (dbc^.dbcPivotAggregation)
+                           <> "width" .=? (dbc^.dbcWidth)
+                           <> "nuid" .=? (dbc^.dbcNuid)
+                           <> "pivotColumns" .=? (dbc^.dbcPivotColumns)
+                           <> "inputWidgets" .=? (dbc^.dbcInputWidgets)
+                           <> "subtype" .=? (dbc^.dbcSubtype)
+                           <> "yColumns" .=? (dbc^.dbcYColumns)
+                           <> "showCommandTitle" .=? (dbc^.dbcShowCommandTitle)
+                           <> "guid" .=? (dbc^.dbcGuid)
+                           <> "commandType" .=? (dbc^.dbcCommandType)
+                           <> "collapsed" .=? (dbc^.dbcCollapsed)
+                           <> "version" .=? (dbc^.dbcVersion)
+                           <> "latestUser" .=? (dbc^.dbcLatestUser)
+                           <> "bindings" .=? (dbc^.dbcBindings)
+                           <> "hideCommandCode" .=? (dbc^.dbcHideCommandCode)
+                           <> "displayType" .=? (dbc^.dbcDisplayType)
+                           <> "globalVars" .=? (dbc^.dbcGlobalVars)
+                           <> "commentThread" .=? (dbc^.dbcCommentThread)
+                           <> "workflows" .=? (dbc^.dbcWorkflows)
+                           <> "parentHierarchy" .=? (dbc^.dbcParentHierarchy)
+                           <> "hideCommandResult" .=? (dbc^.dbcHideCommandResult)
+                           <> "finishTime" .=? (dbc^.dbcFinishTime)
+                           <> "commentsVisible" .=? (dbc^.dbcCommentsVisible)
+                           <> "origId" .=? (dbc^.dbcOrigId)
+                           <> "submitTime" .=? (dbc^.dbcSubmitTime)
+                           <> "diffInserts" .=? (dbc^.dbcDiffInserts)
+                           <> "position" .=? (dbc^.dbcPosition) )
 
 instance FromJSON DBCommand where
   parseJSON = withObject "DBCommand" $ \v -> DBC
@@ -262,13 +261,13 @@ toByteString = encode
 
 toNotebook :: DBNotebook -> N.Notebook
 toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
-  where toCommands = snd . mapAccumL toCommand Nothing
-        toCommand :: Maybe Text -> DBCommand -> (Maybe Text, N.Command)
-        toCommand prev dbc =
+  where toCommands = map toCommand
+        toCommand :: DBCommand -> N.Command
+        toCommand dbc =
           let (langTag, rawCommand) = splitLangTag (dbc^.dbcCommand) in
           case langTag of
-            Nothing -> (prev, N.C prev rawCommand)
-            lang    -> (lang, N.C lang rawCommand)
+            Nothing   -> N.C (db^.dbnLanguage) rawCommand
+            Just lang -> N.C lang rawCommand
         splitLangTag unparsedCommand =
           if unparsedCommand `T.index` 0 == '%'
           then let (x:xs) = T.lines unparsedCommand
@@ -280,9 +279,7 @@ fromNotebook nb = runMeN def
   where runMeN = foldl1 (.) [ dbnName .~ (nb^.N.nName)
                             , dbnCommands .~ map toNBCommand (nb^.N.nCommands) ]
         toNBCommand nc = runMeC def
-          where runMeC = case nc^.N.cLanguage of
-                  Nothing -> dbcCommand .~ (nc^.N.cCommand)
-                  Just l  -> dbcCommand .~ addLang l (nc^.N.cCommand)
+          where runMeC = dbcCommand .~ addLang (nc^.N.cLanguage) (nc^.N.cCommand)
                 addLang l c = T.unlines [ T.cons '%' l, c ]
 
 -- main :: IO ()

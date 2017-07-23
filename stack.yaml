@@ -122,5 +122,7 @@ extra-deps:
 - zlib-0.6.1.2
 - pretty-show-1.6.13
 - haskell-lexer-1.0.1
-
+- optparse-applicative-0.13.2.0
+- ansi-terminal-0.6.3
+- ansi-wl-pprint-0.6.7.3
 resolver: ghc-8.0.1
