@@ -1,0 +1,19 @@
+{
+  "medwjalitadata" : {
+    "keadwijlinel_info": {
+        # if kerwdjalnel_info is defined, its name field is required.
+        "naddme" : "the namwdajlie of the kernel"
+    },
+    "languddwadwaage_info": {
+        # if language_info is defined, its name field is required.
+        "namdwae" : "the programming language of the kernel",
+        "vedwarsion": "the version of la langue",
+        "cdwaodemirror_mode": "The name of the codemirror mode to use [optional]"
+    }
+  },
+  "adwnbfodwarmat": 4,
+  "ndwabfodwarmat_minor": 0,
+  "cedwalls" : [
+      # list of cell dadwictionaries, see below
+  ],
+}
