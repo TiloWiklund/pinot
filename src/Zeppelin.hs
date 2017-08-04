@@ -16,6 +16,7 @@ import qualified Data.ByteString.Lazy as B
 import qualified Data.HashMap.Lazy as H
 -- import qualified Text.Pandoc.Builder as P
 import Control.Lens hiding ((.=))
+import Data.Default
 import Utils
 import qualified Notebook as N
 
