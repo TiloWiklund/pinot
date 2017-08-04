@@ -82,7 +82,7 @@ data DBCommand = DBC { _dbcCustomPlotOptions :: Maybe Value
                      , _dbcOrigId            :: Maybe Value
                      , _dbcSubmitTime        :: Maybe Value
                      , _dbcDiffInserts       :: Maybe Value
-                     , _dbcPosition          :: Int }
+                     , _dbcPosition          :: Double }
   deriving Show
 
 makeLenses ''DBNotebook
@@ -269,7 +269,7 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
             Nothing   -> N.C (db^.dbnLanguage) rawCommand
             Just lang -> N.C lang rawCommand
         splitLangTag unparsedCommand =
-          if unparsedCommand `T.index` 0 == '%'
+          if (not $ T.null unparsedCommand) && unparsedCommand `T.index` 0 == '%'
           then let (x:xs) = T.lines unparsedCommand
                in (Just (T.stripEnd . T.tail $ x), T.unlines xs)
           else (Nothing, unparsedCommand)
