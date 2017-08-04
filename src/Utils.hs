@@ -58,3 +58,9 @@ swapExtension to f = (dropExtension f) ++ to
 
 instance Default UUID where
   def = UUID.nil
+
+defWith :: (Default c, Foldable t) => t (c -> c) -> c
+defWith fs = foldl (.) id fs def
+
+safeIndex :: Text -> Int -> Maybe Char
+safeIndex t i = if T.length t > i then Just (t `T.index` i) else Nothing

@@ -269,18 +269,17 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
             Nothing   -> N.C (db^.dbnLanguage) rawCommand
             Just lang -> N.C lang rawCommand
         splitLangTag unparsedCommand =
-          if (not $ T.null unparsedCommand) && unparsedCommand `T.index` 0 == '%'
+          if maybe False (== '%') (unparsedCommand `safeIndex` 0)
           then let (x:xs) = T.lines unparsedCommand
                in (Just (T.stripEnd . T.tail $ x), T.unlines xs)
           else (Nothing, unparsedCommand)
 
 fromNotebook :: N.Notebook -> DBNotebook
-fromNotebook nb = runMeN def
-  where runMeN = foldl1 (.) [ dbnName .~ (nb^.N.nName)
-                            , dbnCommands .~ map toNBCommand (nb^.N.nCommands) ]
-        toNBCommand nc = runMeC def
-          where runMeC = dbcCommand .~ addLang (nc^.N.cLanguage) (nc^.N.cCommand)
-                addLang l c = T.unlines [ T.cons '%' l, c ]
+fromNotebook nb = defWith [ dbnName .~ (nb^.N.nName)
+                          , dbnCommands .~ map toNBCommand (nb^.N.nCommands) ]
+  where toNBCommand nc =
+          defWith [ dbcCommand .~ addLang (nc^.N.cLanguage) (nc^.N.cCommand) ]
+        addLang l c = T.unlines [ T.cons '%' l, c ]
 
 -- main :: IO ()
 -- main = do
