@@ -7,7 +7,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Tilo Wiklund
 maintainer:          tilo@wiklund.co
-copyright:           2017 Tilo Wiklun
+copyright:           2017 Tilo Wiklund
 category:            Other
 build-type:          Simple
 cabal-version:       >=1.10
@@ -26,3 +26,4 @@ executable dbcflatten
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       aeson, base >= 4.7 && < 5, bytestring, lens, managed, optparse-applicative, system-filepath, text, turtle, unordered-containers, vector, yaml, data-default, pandoc, pandoc-types, containers, uuid, filepath, directory, zip-archive
   default-language:    Haskell2010
+  other-modules:       Databricks, Notebook, Utils

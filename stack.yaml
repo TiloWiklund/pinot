@@ -93,7 +93,7 @@ extra-deps:
 - old-locale-1.0.0.7
 - old-time-1.1.0.3
 - optional-args-1.0.1
-- optparse-applicative-0.13.2.0
+- optparse-applicative-0.14.0.0
 - pandoc-1.19.2.1
 - pandoc-types-1.17.0.5
 - parallel-3.2.1.1
