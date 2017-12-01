@@ -12,6 +12,7 @@ import Data.Maybe (fromJust)
 import Data.Aeson
 import Data.Monoid ((<>))
 import Data.Traversable (mapAccumL)
+import qualified Data.Set as S
 import qualified Data.ByteString.Lazy as B
 import qualified Data.HashMap.Lazy as H
 import qualified Text.Pandoc.Builder as P
@@ -300,6 +301,9 @@ fromByteString = eitherDecode
 toByteString :: DBNotebook -> B.ByteString
 toByteString = encode
 
+exts :: S.Set P.Extension
+exts = S.insert P.Ext_hard_line_breaks P.pandocExtensions
+
 toNotebook :: DBNotebook -> N.Notebook
 toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
   where toCommands = map toCommand
@@ -317,7 +321,7 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
                 d' <- r^.dbrData
                 case d' of
                   String t ->
-                    case P.readHtml (def {P.readerParseRaw = True}) (T.unpack $ t) of
+                    case P.readHtml (def {P.readerParseRaw = True, P.readerExtensions = exts }) (T.unpack $ t) of
                       Right (P.Pandoc _ bs) -> return (N.RSuccess (P.blockQuote (blocks bs)))
                       _ -> Nothing
                   _ -> Nothing
@@ -343,8 +347,8 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
                       (x:xs) -> return (N.RSuccess (P.simpleTable x xs <> (if wasRowTrunc then P.para (P.str "Truncated to 30 rows") else mempty) <> (if wasColTrunc then P.para (P.str "Truncated to 12 cols") else mempty)))
                   _ -> Nothing
           in case langTag of
-               Nothing   -> N.C (db^.dbnLanguage) rawCommand result
-               Just lang -> N.C lang rawCommand result
+               Nothing   -> N.C (db^.dbnLanguage) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
+               Just lang -> N.C lang rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
         splitLangTag unparsedCommand =
           if maybe False (== '%') (unparsedCommand `safeIndex` 0)
           then let (x:xs) = T.lines unparsedCommand
