@@ -367,7 +367,7 @@ fromByteStringArchive x = mapM (\f -> (f,) <$> getNotebook f) jsonPaths
   where archive = Zip.toArchive x
         jsonPaths = filter isJSON (Zip.filesInArchive archive)
         isJSON f = let f' = map C.toLower f
-                   in any (`L.isSuffixOf` f') [".scala", ".py", ".r", ".sql"]
+                   in any (`L.isSuffixOf` f') [".scala", ".python", ".r", ".sql"]
         getNotebook f = fromByteString $
                         Zip.fromEntry $
                         fromJust $
