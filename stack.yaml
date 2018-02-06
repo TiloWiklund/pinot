@@ -155,4 +155,10 @@ extra-deps:
 - pretty-show-1.6.13
 - haskell-lexer-1.0.1
 - happy-1.19.8
+- encoding-0.8.2
+- HaXml-1.25.4
+- regex-compat-0.93.1
+- polyparse-1.12
+- regex-posix-0.95.2
+
 resolver: ghc-8.0.2

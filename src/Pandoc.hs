@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Pandoc where
 
-import qualified Data.ByteString.Lazy as B hiding (pack)
-import qualified Data.ByteString.Lazy.Char8 as B
+import qualified Data.ByteString as B hiding (pack)
+-- import qualified Data.ByteString.Lazy.Char8 as B
 
 import qualified Text.Pandoc.Builder as P
 import Text.Pandoc.Builder ((<>))
@@ -20,6 +20,7 @@ import Notebook as N
 import Utils
 
 import Data.Text as T
+import Data.Encoding.UTF8 as UTF8
 
 fromNotebook :: N.Notebook -> P.Pandoc
 fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
@@ -33,4 +34,5 @@ fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
                   in (P.codeBlock (T.unpack (c^.cCommand))) <> P.para (P.linebreak) <> result <> P.para (P.linebreak)
 
 toMarkdown :: P.Pandoc -> B.ByteString
-toMarkdown = B.pack . P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
+-- toMarkdown = B.pack . P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
+toMarkdown = (encodeString UTF8.UTF8) . P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
