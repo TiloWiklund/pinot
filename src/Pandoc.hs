@@ -9,6 +9,9 @@ import Text.Pandoc.Builder ((<>))
 import qualified Text.Pandoc.Options as P
 import qualified Text.Pandoc.Readers.Markdown as P
 import qualified Text.Pandoc.Writers.Markdown as P
+--import qualified Text.Pandoc.Readers.HTML as P
+import qualified Text.Pandoc.Writers.HTML as P
+import qualified Text.Pandoc.Writers.Native as P
 
 import Data.Default (def)
 
@@ -30,9 +33,20 @@ fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
                       P.Pandoc _ bs = either (error . show) id parsed
                   in blocks bs
                 | otherwise =
-                  let result = maybe mempty id (N.success c)
-                  in (P.codeBlock (T.unpack (c^.cCommand))) <> P.para (P.linebreak) <> result <> P.para (P.linebreak)
+                  let code = if c^.cCommandHidden
+                             then mempty
+                             else (P.codeBlock (T.unpack (c^.cCommand))) <> P.para (P.linebreak)
+                      result = if c^.cResultHidden
+                               then mempty
+                               else maybe mempty (<> P.para (P.linebreak)) (N.success c)
+                  in code <> result
 
 toMarkdown :: P.Pandoc -> B.ByteString
 -- toMarkdown = B.pack . P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
-toMarkdown = (encodeString UTF8.UTF8) . P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
+toMarkdown =  (encodeString UTF8.UTF8). P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
+
+toHtml :: P.Pandoc -> B.ByteString
+toHtml = (encodeString UTF8.UTF8) . P.writeHtmlString (def { P.writerHtml5 = True })
+
+toNative :: P.Pandoc -> B.ByteString
+toNative = (encodeString UTF8.UTF8) . P.writeNative def

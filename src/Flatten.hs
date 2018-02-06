@@ -92,23 +92,24 @@ replacePrefix old new xs = (new </>) <$> stripPrefix old xs
 
 main :: IO ()
 main = do
-  (Run infile outfile) <- execParser opts
+  (Run inFile outFile) <- execParser opts
   sh $ do
-    srcfolder <- using (mktempdir "/tmp" "dbcflatten-source")
-    _ <- procStrict "unzip" [format fp infile, "-d", format fp srcfolder] mempty
+    srcFolder <- using (mktempdir "/tmp" "dbcflatten-source")
+    _ <- procStrict "unzip" [format fp inFile, "-d", format fp srcFolder] mempty
     sh $ do
       resultFolder <- using (mktempdir "/tmp" "dbcflatten-result")
+      cptree srcFolder resultFolder
       sh $ do
-        srcfile <- find isSourceFile srcfolder
-        liftIO $ print srcfile
-        let Just newfile = replacePrefix (srcfolder </> "") (resultFolder </> "") srcfile
-        liftIO $ print newfile
-        srcontent <- liftIO (B.readFile (gfp srcfile))
-        parsed <- either (die . T.pack) return (fromByteString srcontent)
+        srcFile <- find isSourceFile srcFolder
+        liftIO $ print srcFile
+        let Just newFile = replacePrefix (srcFolder </> "") (resultFolder </> "") srcFile
+        liftIO $ print newFile
+        srcContent <- liftIO (B.readFile (gfp srcFile))
+        parsed <- either (die . T.pack) return (fromByteString srcContent)
         let transformed = setNotebook parsed
             final = toByteString transformed
-            inFolder = directory infile
-        liftIO $ B.writeFile (gfp newfile) final
-      _ <- procStrict "jar" [ "-Mcf", format fp outfile
+            inFolder = directory inFile
+        liftIO $ B.writeFile (gfp newFile) final
+      _ <- procStrict "jar" [ "-Mcf", format fp outFile
                             , "-C", format fp resultFolder, "."] mempty
       return ()

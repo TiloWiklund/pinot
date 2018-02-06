@@ -68,12 +68,21 @@ markdownTarget :: TargetFormat
 markdownTarget = over (each . _1) (swapExtension ".md") . over (each . _2) compile
   where compile = P.toMarkdown . P.fromNotebook
 
+htmlTarget :: TargetFormat
+htmlTarget = over (each . _1) (swapExtension ".html") . over (each . _2) compile
+  where compile = P.toHtml . P.fromNotebook
+
+pandocTarget :: TargetFormat
+pandocTarget = over (each . _1) (swapExtension ".pandoc") . over (each . _2) compile
+  where compile = P.toNative . P.fromNotebook
 
 targetFormat :: Parser TargetFormat
 targetFormat = parseFormat <$> targetFormat'
   where parseFormat "databricks-json" = databricksJSONTarget
         parseFormat "zeppelin"        = zeppelinTarget
         parseFormat "markdown"        = markdownTarget
+        parseFormat "html"            = htmlTarget
+        parseFormat "pandoc"          = pandocTarget
         parseFormat _ = error "Unknown target format"
         targetFormat' = strOption ( long "to"
                                     <> short 't'
