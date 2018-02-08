@@ -20,12 +20,10 @@ import           Data.Char             (isAscii)
 
 import           Data.Maybe            (isNothing, catMaybes, fromJust)
 
-import           Data.ByteString.Lazy  (ByteString)
 import qualified Data.ByteString.Lazy  as B
 
 import           Data.Text             (Text)
 import qualified Data.Text             as T
-import qualified Data.Text.Encoding    as T
 
 import           Control.Lens          hiding (view, (.=), (<.>))
 import qualified Control.Lens          as Lens (view)
@@ -37,8 +35,6 @@ import qualified Data.Vector           as V
 import           Data.Aeson            ((.=))
 import qualified Data.Aeson            as A
 import qualified Data.Yaml             as Y
-
--- import           Filesystem.Path      (directory)
 
 data Run = Run { runInfile :: FilePath, runOutpath :: FilePath }
 
