@@ -57,7 +57,7 @@ isHtml :: Y.Value -> Bool
 isHtml (Y.String value) = T.isInfixOf "htmlSandbox" value
 
 setHtml :: Y.Value -> Y.Value
-setHtml (Y.String value) = Y.String (T.concat ["<p class=\"htmlSandobx\">", value, "</p>"])
+setHtml (Y.String value) = Y.String (T.concat ["<p class=\"htmlSandbox\">", value, "</p>"])
 setHtml other = other
 
 setHtmlMaybe :: Maybe Y.Value -> Maybe Y.Value
