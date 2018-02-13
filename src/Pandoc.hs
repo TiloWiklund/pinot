@@ -39,7 +39,7 @@ fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
                 | otherwise =
                   let code = if c^.cCommandHidden
                              then mempty
-                             else (P.codeBlock (T.unpack (c^.cCommand))) <> P.para (P.linebreak)
+                             else (P.codeBlockWith ("", [T.unpack $ c^.cLanguage], []) (T.unpack (c^.cCommand))) <> P.para (P.linebreak)
                       result = if c^.cResultHidden
                                then mempty
                                else maybe mempty (<> P.para (P.linebreak)) (N.success c)
