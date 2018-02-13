@@ -322,7 +322,7 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
                 case d' of
                   String t ->
                     case P.readHtml (def {P.readerParseRaw = True, P.readerExtensions = exts }) (T.unpack $ t) of
-                      Right (P.Pandoc _ bs) -> return (N.RSuccess (P.blockQuote (blocks bs)))
+                      Right (P.Pandoc _ bs) -> return (N.RSuccess (replaceBreaks $ P.blockQuote (blocks bs)))
                       _ -> Nothing
                   _ -> Nothing
               parseRaw r = do

@@ -27,6 +27,8 @@ import Data.Text as T
 import Data.Encoding.UTF8 as UTF8
 import Data.Encoding as E
 
+import qualified Data.Set as S
+
 fromNotebook :: N.Notebook -> P.Pandoc
 fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
   where title = P.text (T.unpack (nb^.nName))
@@ -45,7 +47,7 @@ fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
 
 toMarkdown :: P.Pandoc -> B.ByteString
 -- toMarkdown = B.pack . P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
-toMarkdown =  (E.encodeLazyByteString UTF8.UTF8). P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions, P.writerWrapText = P.WrapPreserve })
+toMarkdown =  (E.encodeLazyByteString UTF8.UTF8). P.writeMarkdown (def { P.writerExtensions = S.insert P.Ext_hard_line_breaks P.githubMarkdownExtensions, P.writerWrapText = P.WrapPreserve })
 
 toHtml :: P.Pandoc -> B.ByteString
 toHtml = (E.encodeLazyByteString UTF8.UTF8) . P.writeHtmlString (def { P.writerHtml5 = True })
