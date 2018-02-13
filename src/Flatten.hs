@@ -35,6 +35,7 @@ import qualified Data.Vector           as V
 import           Data.Aeson            ((.=))
 import qualified Data.Aeson            as A
 import qualified Data.Yaml             as Y
+import           Data.Maybe (fromMaybe)
 
 data Run = Run { runInfile :: FilePath, runOutpath :: FilePath }
 
@@ -52,24 +53,23 @@ opts = info (run <**> helper)
   ( fullDesc
   <> progDesc "Flattens iframes in Databricks notebooks by removing the iframe and inserting a link to the URL of the iframe." )
 
-isIframe :: Text -> Bool
-isIframe = T.isInfixOf "<iframe"
+isHtml :: Y.Value -> Bool
+isHtml (Y.String value) = T.isInfixOf "htmlSandbox" value
 
-getLink :: Text -> Text
-getLink input = T.concat ["<a href=\"", url, "\">", url, "</a>"]
-  where url = fst $ T.breakOn "\"" (T.drop 5 (snd $ T.breakOn "src" input))
+setHtml :: Y.Value -> Y.Value
+setHtml (Y.String value) = Y.String (T.concat ["<p class=\"htmlSandbox\">", value, "</p>"])
+setHtml other = other
 
-setLink :: Y.Value -> Y.Value
-setLink (Y.String input)
-  | isIframe input = Y.String (getLink input)
-  | otherwise      = Y.String input
-setLink other = other
+setHtmlMaybe :: Maybe Y.Value -> Maybe Y.Value
+setHtmlMaybe value = setHtml <$> value
 
-setLinkMaybe :: Maybe Y.Value -> Maybe Y.Value
-setLinkMaybe x = setLink <$> x
+setLink :: DBResult -> DBResult
+setLink result
+  | fromMaybe False (isHtml <$> result^.dbrType) = over dbrData setHtmlMaybe result
+  | otherwise                                    = result
 
 setResult :: Maybe DBResult -> Maybe DBResult
-setResult result = (over dbrData setLinkMaybe) <$> result
+setResult result = setLink <$> result
 
 setCommand :: DBCommand -> DBCommand
 setCommand = over dbcResults setResult
@@ -78,7 +78,7 @@ setNotebook :: DBNotebook -> DBNotebook
 setNotebook = over dbnCommands (map setCommand)
 
 isSourceFile :: Pattern Text
-isSourceFile = choice [suffix s | s <- [".scala", ".py", ".R", ".sql"]]
+isSourceFile = choice [suffix s | s <- [".scala", ".python", ".R", ".sql"]]
 
 gfp :: FilePath -> Prelude.FilePath
 gfp = T.unpack . format fp
