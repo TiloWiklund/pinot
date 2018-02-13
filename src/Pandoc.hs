@@ -37,7 +37,7 @@ fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
                       P.Pandoc _ bs = either (error . show) id parsed
                   in blocks bs
                 | otherwise =
-                  let code = if c^.cCommandHidden
+                  let code = if c^.cCommandHidden || (T.null (c^.cCommand))
                              then mempty
                              else (P.codeBlockWith ("", [T.unpack $ c^.cLanguage], []) (T.unpack (c^.cCommand))) <> P.para (P.linebreak)
                       result = if c^.cResultHidden
