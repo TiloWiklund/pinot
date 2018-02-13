@@ -30,6 +30,8 @@ import qualified Data.Vector as V
 import Text.HTML.TagSoup as TS
 import Text.StringLike as TS
 
+import Debug.Trace
+
 -- jsonType :: Value -> String
 -- jsonType (Object _) = "Object"
 -- jsonType (Array _) = "Array"
@@ -103,7 +105,8 @@ data DBResult = DBR { _dbrAddedWidgets   :: Maybe Value
                     , _dbrData           :: Maybe Value
                     , _dbrArguments      :: Maybe Value
                     , _dbrRemovedWidgets :: Maybe Value
-                    , _dbrType           :: Maybe Value }
+                    , _dbrType           :: Maybe Value
+                    , _dbrSchema         :: Maybe [Value] }
   deriving Show
 
 makeLenses ''DBNotebook
@@ -111,20 +114,22 @@ makeLenses ''DBCommand
 makeLenses ''DBResult
 
 instance Default DBResult where
-  def = DBR Nothing Nothing Nothing Nothing Nothing
+  def = DBR Nothing Nothing Nothing Nothing Nothing Nothing
 
 instance ToJSON DBResult where
   toJSON dbr = objectMaybe [ "addedWidgets" .=? (dbr^.dbrAddedWidgets)
                            , "data" .=? (dbr^.dbrData)
                            , "arguments" .=? (dbr^.dbrArguments)
                            , "removedWidgets" .=? (dbr^.dbrRemovedWidgets)
-                           , "type" .=? (dbr^.dbrType) ]
+                           , "type" .=? (dbr^.dbrType)
+                           , "schema" .=? (dbr^.dbrSchema) ]
 
   toEncoding dbr = pairs ( "addedWidgets" .=? (dbr^.dbrAddedWidgets)
                            <> "data" .=? (dbr^.dbrData)
                            <> "arguments" .=? (dbr^.dbrArguments)
                            <> "removedWidgets" .=? (dbr^.dbrRemovedWidgets)
-                           <> "type" .=? (dbr^.dbrType) )
+                           <> "type" .=? (dbr^.dbrType)
+                           <> "schema" .=? (dbr^.dbrSchema) )
 
 instance FromJSON DBResult where
   parseJSON = withObject "DBResult" $ \v -> DBR
@@ -133,6 +138,7 @@ instance FromJSON DBResult where
     <*> v .:? "arguments"
     <*> v .:? "removedWidgets"
     <*> v .:? "type"
+    <*> v .:? "schema"
 
 instance Default DBCommand where
   def = DBC Nothing Nothing Nothing Nothing Nothing Nothing "" Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing def Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing 0
@@ -369,19 +375,24 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
                   _ -> Nothing
               parseTable r = do
                 d' <- r^.dbrData
+                h' <- r^.dbrSchema
                 case d' of
                   Array arr -> do
                     let trunc' (Array row) = mapM trunc'' (V.toList (V.take 12 row))
-                        trunc' _ = Nothing
+                        trunc' _ = trace "trunc'" Nothing
                         trunc'' (Number cell) = Just (P.plain (P.str (show cell)))
                         trunc'' (String cell) = Just (P.plain (P.str (T.unpack cell)))
-                        trunc'' _ = Nothing
+                        trunc'' Null = Just (P.plain (P.str "null"))
+                        trunc'' x = trace ("trunc'': " ++ show x) Nothing
+                        truncHead (Object entry) = trunc'' =<< (H.lookup "name" entry)
+                        truncHead _ = trace "truncHead" Nothing
                         wasRowTrunc = V.length arr > 30
                         wasColTrunc = V.any (\(Array row) -> V.length row > 12) arr
                     trunc <- mapM trunc' (V.toList (V.take 30 arr))
+                    headers <- mapM truncHead (take 12 h')
                     case trunc of
-                      [] -> Nothing
-                      (x:xs) -> return (N.RSuccess (P.simpleTable x xs <> (if wasRowTrunc then P.para (P.str "Truncated to 30 rows") else mempty) <> (if wasColTrunc then P.para (P.str "Truncated to 12 cols") else mempty)))
+                      [] -> trace "case trunc" Nothing
+                      xs -> return (N.RSuccess (P.simpleTable headers xs <> (if wasRowTrunc then P.para (P.str "Truncated to 30 rows") else mempty) <> (if wasColTrunc then P.para (P.str "Truncated to 12 cols") else mempty)))
                   _ -> Nothing
           in case langTag of
                Nothing   -> N.C (db^.dbnLanguage) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
