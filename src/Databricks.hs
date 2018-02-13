@@ -334,9 +334,9 @@ swapTag to ((TS.TagOpen from attrs) : ts) = (TS.TagOpen to attrs) : go 0 ts
         go _ [] = []
 swapTag _ ts = ts
 
- -- splitAtClosingTag ((TagOpen t attrs) : ts) = ((TagOpen t attrs) : (rev ts1), ts2)
---   where (ts1, ts2) = go 0 [] ts
---         go depth ((TagOpen t' attrs'):ts') | t == t' = go (depth+1) ts'
+dropClasses :: TS.StringLike str => [Tag str] -> [Tag str]
+dropClasses ((TS.TagOpen t attrs) : ts) = (TS.TagOpen t (filter notClass attrs)) : ts
+  where notClass (attr, _) = attr /= "class"
 
 -- Databricks puts tables in a non-verbatim block, meaning pandoc gets rid of
 -- multiple spaces, this replaces the ansiout div:s by pre:s
@@ -345,7 +345,15 @@ ansioutVerbatim = TS.renderTags . transformTags . TS.parseTags
   where transformTags ts = concatMap transformTag (TS.partitions (TS.~== ansiTagOpen) ts)
         ansiTagOpen :: TS.Tag T.Text
         ansiTagOpen  = TS.TagOpen "div" [("class", "ansiout")]
-        transformTag = swapTag "pre"
+        transformTag = dropClasses . swapTag "pre"
+
+toMDLanguage :: T.Text -> T.Text
+toMDLanguage "py" = "python"
+toMDLanguage x = x
+
+fromMDLanguage :: T.Text -> T.Text
+fromMDLanguage "python" = "py"
+fromMDLanguage x = x
 
 toNotebook :: DBNotebook -> N.Notebook
 toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
@@ -395,8 +403,8 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
                       xs -> return (N.RSuccess (P.simpleTable headers xs <> (if wasRowTrunc then P.para (P.str "Truncated to 30 rows") else mempty) <> (if wasColTrunc then P.para (P.str "Truncated to 12 cols") else mempty)))
                   _ -> Nothing
           in case langTag of
-               Nothing   -> N.C (db^.dbnLanguage) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
-               Just lang -> N.C lang rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
+               Nothing   -> N.C (toMDLanguage $ db^.dbnLanguage) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
+               Just lang -> N.C (toMDLanguage lang) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
         splitLangTag unparsedCommand =
           if maybe False (== '%') (unparsedCommand `safeIndex` 0)
           then let (x:xs) = T.lines unparsedCommand
@@ -407,7 +415,7 @@ fromNotebook :: N.Notebook -> DBNotebook
 fromNotebook nb = defWith [ dbnName .~ (nb^.N.nName)
                           , dbnCommands .~ map toNBCommand (nb^.N.nCommands) ]
   where toNBCommand nc =
-          defWith [ dbcCommand .~ addLang (nc^.N.cLanguage) (nc^.N.cCommand) ]
+          defWith [ dbcCommand .~ addLang (fromMDLanguage $ nc^.N.cLanguage) (nc^.N.cCommand) ]
         addLang l c = T.unlines [ T.cons '%' l, c ]
 
 fromByteStringArchive :: B.ByteString -> Either String [(FilePath, DBNotebook)]
