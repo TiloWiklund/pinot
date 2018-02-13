@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Pandoc where
 
-import qualified Data.ByteString as B hiding (pack)
+-- import qualified Data.ByteString as B hiding (pack)
+import qualified Data.ByteString.Lazy as B hiding (pack)
 -- import qualified Data.ByteString.Lazy.Char8 as B
 
 import qualified Text.Pandoc.Builder as P
@@ -24,6 +25,7 @@ import Utils
 
 import Data.Text as T
 import Data.Encoding.UTF8 as UTF8
+import Data.Encoding as E
 
 fromNotebook :: N.Notebook -> P.Pandoc
 fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
@@ -43,10 +45,10 @@ fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
 
 toMarkdown :: P.Pandoc -> B.ByteString
 -- toMarkdown = B.pack . P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
-toMarkdown =  (encodeString UTF8.UTF8). P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions, P.writerWrapText = P.WrapPreserve })
+toMarkdown =  (E.encodeLazyByteString UTF8.UTF8). P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions, P.writerWrapText = P.WrapPreserve })
 
 toHtml :: P.Pandoc -> B.ByteString
-toHtml = (encodeString UTF8.UTF8) . P.writeHtmlString (def { P.writerHtml5 = True })
+toHtml = (E.encodeLazyByteString UTF8.UTF8) . P.writeHtmlString (def { P.writerHtml5 = True })
 
 toNative :: P.Pandoc -> B.ByteString
-toNative = (encodeString UTF8.UTF8) . P.writeNative def
+toNative = (E.encodeLazyByteString UTF8.UTF8) . P.writeNative def
