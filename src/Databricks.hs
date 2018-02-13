@@ -17,6 +17,7 @@ import qualified Data.ByteString.Lazy as B
 import qualified Data.HashMap.Lazy as H
 import qualified Text.Pandoc.Builder as P
 import qualified Text.Pandoc.Options as P
+import qualified Text.Pandoc.Walk as P
 import Control.Lens hiding ((.=))
 import Control.Monad (when, unless)
 import Utils
@@ -303,6 +304,12 @@ toByteString = encode
 
 exts :: S.Set P.Extension
 exts = S.insert P.Ext_hard_line_breaks P.pandocExtensions
+
+replaceBreaks :: P.Blocks -> P.Blocks
+replaceBreaks bs = P.fromList bs'
+  where (P.Pandoc _ bs') = P.walk replaceBreak (P.doc bs)
+        replaceBreak P.SoftBreak = P.LineBreak
+        replaceBreak x = x
 
 toNotebook :: DBNotebook -> N.Notebook
 toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
