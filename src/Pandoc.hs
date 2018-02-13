@@ -43,7 +43,7 @@ fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
 
 toMarkdown :: P.Pandoc -> B.ByteString
 -- toMarkdown = B.pack . P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
-toMarkdown =  (encodeString UTF8.UTF8). P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
+toMarkdown =  (encodeString UTF8.UTF8). P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions, P.writerWrapText = P.WrapPreserve })
 
 toHtml :: P.Pandoc -> B.ByteString
 toHtml = (encodeString UTF8.UTF8) . P.writeHtmlString (def { P.writerHtml5 = True })
