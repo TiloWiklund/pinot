@@ -27,6 +27,9 @@ import qualified Data.Char as C (toLower)
 import qualified Text.Pandoc.Readers.HTML as P
 import qualified Data.Vector as V
 
+import Text.HTML.TagSoup as TS
+import Text.StringLike as TS
+
 -- jsonType :: Value -> String
 -- jsonType (Object _) = "Object"
 -- jsonType (Array _) = "Array"
@@ -303,13 +306,40 @@ toByteString :: DBNotebook -> B.ByteString
 toByteString = encode
 
 exts :: S.Set P.Extension
-exts = S.insert P.Ext_hard_line_breaks P.pandocExtensions
+exts = foldr S.insert P.pandocExtensions [P.Ext_hard_line_breaks]
 
 replaceBreaks :: P.Blocks -> P.Blocks
 replaceBreaks bs = P.fromList bs'
   where (P.Pandoc _ bs') = P.walk replaceBreak (P.doc bs)
         replaceBreak P.SoftBreak = P.LineBreak
         replaceBreak x = x
+
+-- Attempts to find the matching closing tag to the first tag, and replaces them both
+-- if no closing tag can be found only the opening one is replaced
+-- if first element is not an opening tag acts as identity
+swapTag :: TS.StringLike str => str -> [Tag str] -> [Tag str]
+swapTag to ((TS.TagOpen from attrs) : ts) = (TS.TagOpen to attrs) : go 0 ts
+  where go depth (t@(TS.TagOpen x _) : ts') | x == from = t : go (depth + 1) ts'
+                                            | otherwise = t : go depth ts'
+        go depth (t@(TS.TagClose x) : ts') | x == from && depth == 0 = (TS.TagClose to) : ts'
+                                           | x == from && depth >= 1 = t : go (depth - 1) ts'
+                                           | otherwise = t : go depth ts'
+        go depth (t:ts') = t : go depth ts'
+        go _ [] = []
+swapTag _ ts = ts
+
+ -- splitAtClosingTag ((TagOpen t attrs) : ts) = ((TagOpen t attrs) : (rev ts1), ts2)
+--   where (ts1, ts2) = go 0 [] ts
+--         go depth ((TagOpen t' attrs'):ts') | t == t' = go (depth+1) ts'
+
+-- Databricks puts tables in a non-verbatim block, meaning pandoc gets rid of
+-- multiple spaces, this replaces the ansiout div:s by pre:s
+ansioutVerbatim :: T.Text -> T.Text
+ansioutVerbatim = TS.renderTags . transformTags . TS.parseTags
+  where transformTags ts = concatMap transformTag (TS.partitions (TS.~== ansiTagOpen) ts)
+        ansiTagOpen :: TS.Tag T.Text
+        ansiTagOpen  = TS.TagOpen "div" [("class", "ansiout")]
+        transformTag = swapTag "pre"
 
 toNotebook :: DBNotebook -> N.Notebook
 toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
@@ -328,7 +358,7 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
                 d' <- r^.dbrData
                 case d' of
                   String t ->
-                    case P.readHtml (def {P.readerParseRaw = True, P.readerExtensions = exts }) (T.unpack $ t) of
+                    case P.readHtml (def { P.readerParseRaw = True, P.readerExtensions = exts }) (T.unpack $ ansioutVerbatim t) of
                       Right (P.Pandoc _ bs) -> return (N.RSuccess (replaceBreaks $ P.blockQuote (blocks bs)))
                       _ -> Nothing
                   _ -> Nothing
