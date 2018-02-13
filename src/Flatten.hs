@@ -51,7 +51,7 @@ run = Run <$> infileP <*> outpathP
 opts :: ParserInfo Run
 opts = info (run <**> helper)
   ( fullDesc
-  <> progDesc "Flattens iframes in Databricks notebooks by removing the iframe and inserting a link to the URL of the iframe." )
+  <> progDesc "Encloses htmlSandboxes in Databricks notebooks in <p> html tags with class htmlSandbox." )
 
 isHtml :: Y.Value -> Bool
 isHtml (Y.String value) = T.isInfixOf "htmlSandbox" value
