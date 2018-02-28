@@ -407,8 +407,8 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
                Just lang -> N.C (toMDLanguage lang) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode)) (dbc^.dbcPosition)
         splitLangTag unparsedCommand =
           if maybe False (== '%') (unparsedCommand `safeIndex` 0)
-          then let (x:xs) = T.lines unparsedCommand
-               in (Just (T.stripEnd . T.tail $ x), T.unlines xs)
+          then let (x, xs) = (T.breakOn " " unparsedCommand)
+               in (Just (T.tail x), T.stripStart xs)
           else (Nothing, unparsedCommand)
 
 fromNotebook :: N.Notebook -> DBNotebook
