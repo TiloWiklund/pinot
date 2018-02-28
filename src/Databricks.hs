@@ -18,6 +18,7 @@ import qualified Data.HashMap.Lazy as H
 import qualified Text.Pandoc.Builder as P
 import qualified Text.Pandoc.Options as P
 import qualified Text.Pandoc.Walk as P
+import qualified Text.Pandoc.Class as P
 import Control.Lens hiding ((.=))
 import Control.Monad (when, unless)
 import Utils
@@ -311,8 +312,8 @@ fromByteString = eitherDecode
 toByteString :: DBNotebook -> B.ByteString
 toByteString = encode
 
-exts :: S.Set P.Extension
-exts = foldr S.insert P.pandocExtensions [P.Ext_hard_line_breaks]
+exts :: P.Extensions
+exts = P.enableExtension P.Ext_hard_line_breaks P.pandocExtensions
 
 replaceBreaks :: P.Blocks -> P.Blocks
 replaceBreaks bs = P.fromList bs'
@@ -372,7 +373,7 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
                 d' <- r^.dbrData
                 case d' of
                   String t ->
-                    case P.readHtml (def { P.readerParseRaw = True, P.readerExtensions = exts }) (T.unpack $ ansioutVerbatim t) of
+                    case P.runPure $ P.readHtml (def { P.readerExtensions = exts }) (ansioutVerbatim t) of
                       Right (P.Pandoc _ bs) -> return (N.RSuccess (replaceBreaks $ P.blockQuote (blocks bs)))
                       _ -> Nothing
                   _ -> Nothing
@@ -406,8 +407,8 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
                Nothing   -> N.C (toMDLanguage $ db^.dbnLanguage) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode)) (dbc^.dbcPosition)
                Just lang -> N.C (toMDLanguage lang) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode)) (dbc^.dbcPosition)
         splitLangTag unparsedCommand =
-          if maybe False (== '%') (unparsedCommand `safeIndex` 0)
-          then let (x, xs) = (T.breakOn " " unparsedCommand)
+          if maybe False (== '%') ((T.stripStart unparsedCommand) `safeIndex` 0)
+          then let (x, xs) = (T.breakOn " " (T.stripStart unparsedCommand))
                    (y, ys) = (T.breakOn "\n" x)
                in (Just (T.tail y), T.stripStart $ T.concat [ys, xs])
           else (Nothing, unparsedCommand)

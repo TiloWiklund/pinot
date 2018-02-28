@@ -13,6 +13,7 @@ import qualified Text.Pandoc.Writers.Markdown as P
 --import qualified Text.Pandoc.Readers.HTML as P
 import qualified Text.Pandoc.Writers.HTML as P
 import qualified Text.Pandoc.Writers.Native as P
+import qualified Text.Pandoc.Class as P
 
 import Data.Default (def)
 
@@ -24,10 +25,7 @@ import Notebook as N
 import Utils
 
 import Data.Text as T
-import Data.Encoding.UTF8 as UTF8
-import Data.Encoding as E
-
-import qualified Data.Set as S
+import Data.Text.Encoding as E
 
 import Data.List (sortOn)
 
@@ -38,7 +36,7 @@ fromNotebook :: N.Notebook -> P.Pandoc
 fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (sortOn getPosition (nb^.nCommands))
   where title = P.text (T.unpack (nb^.nName))
         block c | c^.cLanguage == "md" =
-                  let parsed = P.readMarkdown def (T.unpack (c^.cCommand))
+                  let parsed = P.runPure $ P.readMarkdown ( def { P.readerExtensions = P.extensionsFromList [P.Ext_raw_html, P.Ext_raw_tex, P.Ext_hard_line_breaks] } ) (c^.cCommand)
                       P.Pandoc _ bs = either (error . show) id parsed
                   in blocks bs
                 | otherwise =
@@ -50,12 +48,16 @@ fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (sortOn getPosition (
                                else maybe mempty (<> P.para (P.linebreak)) (N.success c)
                   in code <> result
 
+fromRight :: Either a b -> b
+fromRight (Right b) = b
+fromRight _ = error "This error is not handled"
+
 toMarkdown :: P.Pandoc -> B.ByteString
 -- toMarkdown = B.pack . P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
-toMarkdown =  (E.encodeLazyByteString UTF8.UTF8). P.writeMarkdown (def { P.writerExtensions = S.insert P.Ext_hard_line_breaks P.githubMarkdownExtensions, P.writerWrapText = P.WrapPreserve })
+toMarkdown = B.fromStrict . E.encodeUtf8 . fromRight . P.runPure . P.writeMarkdown (def { P.writerExtensions = P.enableExtension P.Ext_hard_line_breaks P.githubMarkdownExtensions, P.writerWrapText = P.WrapPreserve })
 
 toHtml :: P.Pandoc -> B.ByteString
-toHtml = (E.encodeLazyByteString UTF8.UTF8) . P.writeHtmlString (def { P.writerHtml5 = True })
+toHtml = B.fromStrict . E.encodeUtf8 . fromRight . P.runPure . P.writeHtml5String def
 
 toNative :: P.Pandoc -> B.ByteString
-toNative = (E.encodeLazyByteString UTF8.UTF8) . P.writeNative def
+toNative = B.fromStrict . E.encodeUtf8 . fromRight . P.runPure . P.writeNative def
