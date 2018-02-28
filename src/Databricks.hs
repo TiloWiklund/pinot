@@ -408,7 +408,8 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
         splitLangTag unparsedCommand =
           if maybe False (== '%') (unparsedCommand `safeIndex` 0)
           then let (x, xs) = (T.breakOn " " unparsedCommand)
-               in (Just (T.tail x), T.stripStart xs)
+                   (y, ys) = (T.breakOn "\n" x)
+               in (Just (T.tail y), T.stripStart $ T.concat [ys, xs])
           else (Nothing, unparsedCommand)
 
 fromNotebook :: N.Notebook -> DBNotebook
