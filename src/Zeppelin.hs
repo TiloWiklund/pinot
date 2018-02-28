@@ -180,8 +180,8 @@ toNotebook zn = N.N (zn^.znName) (toCommands (zn^.znParagraphs))
         toCommand prev zp =
           let (langTag, rawCommand) = splitLangTag (zp^.zpText) in
           case langTag of
-            Nothing   -> (prev, N.C prev rawCommand Nothing False False)
-            Just lang -> (lang, N.C lang rawCommand Nothing False False)
+            Nothing   -> (prev, N.C prev rawCommand Nothing False False 0)
+            Just lang -> (lang, N.C lang rawCommand Nothing False False 0)
         splitLangTag unparsedCommand =
           if maybe False (== '%') (unparsedCommand `safeIndex` 0)
           then let (x:xs) = T.lines unparsedCommand

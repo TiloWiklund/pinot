@@ -403,8 +403,8 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
                       xs -> return (N.RSuccess (P.simpleTable headers xs <> (if wasRowTrunc then P.para (P.str "Truncated to 30 rows") else mempty) <> (if wasColTrunc then P.para (P.str "Truncated to 12 cols") else mempty)))
                   _ -> Nothing
           in case langTag of
-               Nothing   -> N.C (toMDLanguage $ db^.dbnLanguage) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
-               Just lang -> N.C (toMDLanguage lang) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
+               Nothing   -> N.C (toMDLanguage $ db^.dbnLanguage) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode)) (dbc^.dbcPosition)
+               Just lang -> N.C (toMDLanguage lang) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode)) (dbc^.dbcPosition)
         splitLangTag unparsedCommand =
           if maybe False (== '%') (unparsedCommand `safeIndex` 0)
           then let (x:xs) = T.lines unparsedCommand
@@ -415,7 +415,8 @@ fromNotebook :: N.Notebook -> DBNotebook
 fromNotebook nb = defWith [ dbnName .~ (nb^.N.nName)
                           , dbnCommands .~ map toNBCommand (nb^.N.nCommands) ]
   where toNBCommand nc =
-          defWith [ dbcCommand .~ addLang (fromMDLanguage $ nc^.N.cLanguage) (nc^.N.cCommand) ]
+          defWith [ dbcCommand .~ addLang (fromMDLanguage $ nc^.N.cLanguage) (nc^.N.cCommand),
+                    dbcPosition .~ (nc^.N.cPosition) ]
         addLang l c = T.unlines [ T.cons '%' l, c ]
 
 fromByteStringArchive :: B.ByteString -> Either String [(FilePath, DBNotebook)]

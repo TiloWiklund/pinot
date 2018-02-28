@@ -29,8 +29,13 @@ import Data.Encoding as E
 
 import qualified Data.Set as S
 
+import Data.List (sortOn)
+
+getPosition :: N.Command -> Double
+getPosition c = c^.cPosition
+
 fromNotebook :: N.Notebook -> P.Pandoc
-fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
+fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (sortOn getPosition (nb^.nCommands))
   where title = P.text (T.unpack (nb^.nName))
         block c | c^.cLanguage == "md" =
                   let parsed = P.readMarkdown def (T.unpack (c^.cCommand))
