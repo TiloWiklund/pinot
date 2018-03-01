@@ -27,13 +27,8 @@ import Utils
 import Data.Text as T
 import Data.Text.Encoding as E
 
-import Data.List (sortOn)
-
-getPosition :: N.Command -> Double
-getPosition c = c^.cPosition
-
 fromNotebook :: N.Notebook -> P.Pandoc
-fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (sortOn getPosition (nb^.nCommands))
+fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
   where title = P.text (T.unpack (nb^.nName))
         block c | c^.cLanguage == "md" =
                   let parsed = P.runPure $ P.readMarkdown ( def { P.readerExtensions = P.extensionsFromList [P.Ext_raw_html, P.Ext_raw_tex, P.Ext_hard_line_breaks] } ) (c^.cCommand)

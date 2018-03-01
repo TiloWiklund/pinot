@@ -12,6 +12,7 @@ import Data.Maybe (fromJust)
 import Data.Aeson
 import Data.Monoid ((<>))
 import Data.Traversable (mapAccumL)
+import Data.List (sortOn)
 import qualified Data.Set as S
 import qualified Data.ByteString.Lazy as B
 import qualified Data.HashMap.Lazy as H
@@ -356,8 +357,16 @@ fromMDLanguage :: T.Text -> T.Text
 fromMDLanguage "python" = "py"
 fromMDLanguage x = x
 
+splitLangTag :: Text -> (Maybe Text, Text)
+splitLangTag unparsedCommand =
+  if maybe False (== '%') ((T.stripStart unparsedCommand) `safeIndex` 0)
+  then let (x, xs) = (T.breakOn " " (T.stripStart unparsedCommand))
+           (y, ys) = (T.breakOn "\n" x)
+       in (Just (T.tail y), T.stripStart $ T.concat [ys, xs])
+  else (Nothing, unparsedCommand)
+
 toNotebook :: DBNotebook -> N.Notebook
-toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
+toNotebook db = N.N (db^.dbnName) (toCommands (sortOn _dbcPosition (db^.dbnCommands)))
   where toCommands = map toCommand
         toCommand :: DBCommand -> N.Command
         toCommand dbc =
@@ -404,21 +413,14 @@ toNotebook db = N.N (db^.dbnName) (toCommands (db^.dbnCommands))
                       xs -> return (N.RSuccess (P.simpleTable headers xs <> (if wasRowTrunc then P.para (P.str "Truncated to 30 rows") else mempty) <> (if wasColTrunc then P.para (P.str "Truncated to 12 cols") else mempty)))
                   _ -> Nothing
           in case langTag of
-               Nothing   -> N.C (toMDLanguage $ db^.dbnLanguage) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode)) (dbc^.dbcPosition)
-               Just lang -> N.C (toMDLanguage lang) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode)) (dbc^.dbcPosition)
-        splitLangTag unparsedCommand =
-          if maybe False (== '%') ((T.stripStart unparsedCommand) `safeIndex` 0)
-          then let (x, xs) = (T.breakOn " " (T.stripStart unparsedCommand))
-                   (y, ys) = (T.breakOn "\n" x)
-               in (Just (T.tail y), T.stripStart $ T.concat [ys, xs])
-          else (Nothing, unparsedCommand)
+               Nothing   -> N.C (toMDLanguage $ db^.dbnLanguage) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
+               Just lang -> N.C (toMDLanguage lang) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
 
 fromNotebook :: N.Notebook -> DBNotebook
 fromNotebook nb = defWith [ dbnName .~ (nb^.N.nName)
                           , dbnCommands .~ map toNBCommand (nb^.N.nCommands) ]
   where toNBCommand nc =
-          defWith [ dbcCommand .~ addLang (fromMDLanguage $ nc^.N.cLanguage) (nc^.N.cCommand),
-                    dbcPosition .~ (nc^.N.cPosition) ]
+          defWith [ dbcCommand .~ addLang (fromMDLanguage $ nc^.N.cLanguage) (nc^.N.cCommand) ]
         addLang l c = T.unlines [ T.cons '%' l, c ]
 
 fromByteStringArchive :: B.ByteString -> Either String [(FilePath, DBNotebook)]

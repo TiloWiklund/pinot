@@ -18,8 +18,7 @@ data Command = C { _cLanguage       :: Text
                  , _cCommand        :: Text
                  , _cState          :: Maybe Result
                  , _cResultHidden   :: Bool
-                 , _cCommandHidden  :: Bool
-                 , _cPosition       :: Double }
+                 , _cCommandHidden  :: Bool }
   deriving (Eq, Show)
 
 data Result = RSuccess P.Blocks
@@ -30,7 +29,7 @@ makeLenses ''Notebook
 makeLenses ''Command
 
 success :: Command -> Maybe P.Blocks
-success (C _ _ (Just (RSuccess p)) _ _ _) = Just p
+success (C _ _ (Just (RSuccess p)) _ _) = Just p
 success _ = Nothing
 
 -- data Language = Java
