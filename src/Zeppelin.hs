@@ -167,11 +167,15 @@ fromByteString = eitherDecode
 toByteString :: ZeppelinNotebook -> B.ByteString
 toByteString = encode
 
+fromMDLanguage :: T.Text -> T.Text
+fromMDLanguage "scala" = "spark"
+fromMDLanguage x = x
+
 fromNotebook :: N.Notebook -> ZeppelinNotebook
 fromNotebook nb = defWith [ znName .~ (nb^.N.nName)
                           , znParagraphs .~ map toZParagraph (nb^.N.nCommands) ]
   where toZParagraph nc = defWith [zpText .~ addLang (nc^.N.cLanguage) (nc^.N.cCommand)]
-        addLang l c = T.unlines [ T.cons '%' l, c ]
+        addLang l c = T.unlines [ T.cons '%' (fromMDLanguage l), c ]
 
 toNotebook :: ZeppelinNotebook -> N.Notebook
 toNotebook zn = N.N (zn^.znName) (toCommands (zn^.znParagraphs))
