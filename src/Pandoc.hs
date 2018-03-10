@@ -49,7 +49,7 @@ fromRight _ = error "This error is not handled"
 
 toMarkdown :: P.Pandoc -> B.ByteString
 -- toMarkdown = B.pack . P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
-toMarkdown = B.fromStrict . E.encodeUtf8 . fromRight . P.runPure . P.writeMarkdown (def { P.writerExtensions = P.enableExtension P.Ext_hard_line_breaks P.githubMarkdownExtensions, P.writerWrapText = P.WrapPreserve })
+toMarkdown = B.fromStrict . E.encodeUtf8 . fromRight . P.runPure . P.writeMarkdown (def { P.writerExtensions = P.enableExtension P.Ext_hard_line_breaks (P.enableExtension P.Ext_raw_tex P.githubMarkdownExtensions), P.writerWrapText = P.WrapPreserve })
 
 toHtml :: P.Pandoc -> B.ByteString
 toHtml = B.fromStrict . E.encodeUtf8 . fromRight . P.runPure . P.writeHtml5String def
