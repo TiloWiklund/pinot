@@ -8,7 +8,7 @@ import Data.Text (Text, unpack)
 import qualified Data.List as L
 import qualified Data.UUID as UUID
 import qualified Data.Text as T
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, fromMaybe)
 import Data.Aeson
 import Data.Monoid ((<>))
 import Data.Traversable (mapAccumL)
@@ -413,8 +413,8 @@ toNotebook db = N.N (db^.dbnName) (toCommands (sortOn _dbcPosition (db^.dbnComma
                       xs -> return (N.RSuccess (P.simpleTable headers xs <> (if wasRowTrunc then P.para (P.str "Truncated to 30 rows") else mempty) <> (if wasColTrunc then P.para (P.str "Truncated to 12 cols") else mempty)))
                   _ -> Nothing
           in case langTag of
-               Nothing   -> N.C (toMDLanguage $ db^.dbnLanguage) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
-               Just lang -> N.C (toMDLanguage lang) rawCommand result False (maybe False id (dbc^.dbcHideCommandCode))
+               Nothing   -> N.C (toMDLanguage $ db^.dbnLanguage) rawCommand result (fromMaybe False (dbc^.dbcHideCommandResult)) (fromMaybe False (dbc^.dbcHideCommandCode))
+               Just lang -> N.C (toMDLanguage lang) rawCommand result (fromMaybe False (dbc^.dbcHideCommandResult)) (fromMaybe False (dbc^.dbcHideCommandCode))
 
 fromNotebook :: N.Notebook -> DBNotebook
 fromNotebook nb = defWith [ dbnName .~ (nb^.N.nName)
