@@ -1,7 +1,7 @@
 Software somehwat in the same vein as [pandoc](http://pandoc.org/), but for notebooks (Jupyter, Zeppelin, ...) rather than markup formats. Currently only has very rudimentary support for [Zeppelin](https://zeppelin.apache.org/) and [Databricks](https://community.cloud.databricks.com/) as well as outputting markdown.
 
 Copy of the following repository:
-[https://github.com/TiloWiklund/pinot](https://github.com/TiloWiklund/pinot)
+[https://gitlab.com/tilo.wiklund/pinot](https://gitlab.com/tilo.wiklund/pinot)
 
 If you install [Stack](https://haskellstack.org/) you should be able to simply (in the source code folder) run:
 ```
