@@ -68,6 +68,10 @@ markdownTarget :: TargetFormat
 markdownTarget = over (each . _1) (swapExtension ".md") . over (each . _2) compile
   where compile = P.toMarkdown . P.fromNotebook
 
+markdownTargetKaTeX :: TargetFormat
+markdownTargetKaTeX = over (each . _1) (swapExtension ".md") . over (each . _2) compile
+  where compile = P.toMarkdownKaTeX . P.fromNotebook
+
 htmlTarget :: TargetFormat
 htmlTarget = over (each . _1) (swapExtension ".html") . over (each . _2) compile
   where compile = P.toHtml . P.fromNotebook
@@ -81,6 +85,7 @@ targetFormat = parseFormat <$> targetFormat'
   where parseFormat "databricks-json" = databricksJSONTarget
         parseFormat "zeppelin"        = zeppelinTarget
         parseFormat "markdown"        = markdownTarget
+        parseFormat "markdown-katex"  = markdownTargetKaTeX
         parseFormat "html"            = htmlTarget
         parseFormat "pandoc"          = pandocTarget
         parseFormat _ = error "Unknown target format"

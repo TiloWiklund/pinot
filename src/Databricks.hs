@@ -12,7 +12,7 @@ import Data.Maybe (fromJust, fromMaybe)
 import Data.Aeson
 import Data.Monoid ((<>))
 import Data.Traversable (mapAccumL)
-import Data.List (sortOn)
+import Data.List (sortOn, unfoldr)
 import qualified Data.Set as S
 import qualified Data.ByteString.Lazy as B
 import qualified Data.HashMap.Lazy as H
@@ -349,6 +349,57 @@ ansioutVerbatim = TS.renderTags . transformTags . TS.parseTags
         ansiTagOpen  = TS.TagOpen "div" [("class", "ansiout")]
         transformTag = dropClasses . swapTag "pre"
 
+type Delimiter = (T.Text, T.Text)
+
+dbInlineMath :: Delimiter
+dbInlineMath = ("\\\\(", "\\\\)")
+dbDisplayMath :: Delimiter
+dbDisplayMath = ("$$", "$$")
+texInlineMath :: Delimiter
+texInlineMath = ("$", "$")
+texDisplayMath :: Delimiter
+texDisplayMath = ("$$", "$$")
+
+-- TODO: Make this more robust to unbalanced delimiters
+dblocks :: Delimiter -> T.Text -> [Either T.Text T.Text]
+dblocks d = concat . unfoldr step
+  where step "" = Nothing
+        step t = case extractBlock d t of
+                   Just ("", m, r) -> Just ([Right m], r)
+                   Just (l, m, r) -> Just ([Left l, Right m], r)
+                   Nothing -> Just ([Left t], "")
+
+undblocks :: Delimiter -> [Either T.Text T.Text] -> T.Text
+undblocks (open, close) = T.concat . map surround
+  where surround (Right t) = T.concat [open, t, close]
+        surround (Left t) = t
+
+swapDelimiters :: Delimiter -> Delimiter -> T.Text -> T.Text
+swapDelimiters dfrom dto = undblocks dto . dblocks dfrom
+
+-- traceTransform a b = trace ("From:\n" ++ (T.unpack a) ++ "\nTo:\n" ++ (T.unpack b)) b
+
+-- TODO: There was something about a \\\\\\[ thing too?
+dbCleanLatexBlock :: T.Text -> T.Text
+dbCleanLatexBlock t = foldl substitute t weirdDBSyntax
+  where substitute s (f, t) = T.replace f t s
+        weirdDBSyntax = [ ("\\\\\\\\", "\\\\")
+                        , ("\\_", "_") ]
+
+dbCleanLatex :: T.Text -> T.Text
+dbCleanLatex = cleanInlineLatex . cleanDisplayLatex
+  where clean = dbCleanLatexBlock
+        cleanInlineLatex = undblocks texInlineMath . map (fmap (T.strip . clean)) . dblocks dbInlineMath
+        cleanDisplayLatex = undblocks texDisplayMath . map (fmap clean) . dblocks dbDisplayMath
+
+extractBlock :: Delimiter -> T.Text -> Maybe (T.Text, T.Text, T.Text)
+extractBlock (open, close) t = do
+  let (left, rest0) = T.breakOn open t
+  rest1 <- T.stripPrefix open rest0
+  let (inside, rest2) = T.breakOn close rest1
+  right <- T.stripPrefix close rest2
+  return (left, inside, right)
+
 toMDLanguage :: T.Text -> T.Text
 toMDLanguage "py" = "python"
 toMDLanguage x = x
@@ -370,7 +421,9 @@ toNotebook db = N.N (db^.dbnName) (toCommands (sortOn _dbcPosition (db^.dbnComma
   where toCommands = map toCommand
         toCommand :: DBCommand -> N.Command
         toCommand dbc =
-          let (langTag, rawCommand) = splitLangTag (dbc^.dbcCommand)
+          let (langTag, rawCommand') = splitLangTag (dbc^.dbcCommand)
+              rawCommand | Just "md" <- langTag = dbCleanLatex rawCommand'
+                         | otherwise = rawCommand'
               result = do r <- dbc^.dbcResults
                           t <- r^.dbrType
                           case t of

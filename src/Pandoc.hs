@@ -14,6 +14,7 @@ import qualified Text.Pandoc.Writers.Markdown as P
 import qualified Text.Pandoc.Writers.HTML as P
 import qualified Text.Pandoc.Writers.Native as P
 import qualified Text.Pandoc.Class as P
+import qualified Text.Pandoc.Walk as P
 
 import Data.Default (def)
 
@@ -31,7 +32,7 @@ fromNotebook :: N.Notebook -> P.Pandoc
 fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
   where title = P.text (T.unpack (nb^.nName))
         block c | c^.cLanguage == "md" =
-                  let parsed = P.runPure $ P.readMarkdown ( def { P.readerExtensions = P.extensionsFromList [P.Ext_raw_html, P.Ext_raw_tex, P.Ext_hard_line_breaks] } ) (c^.cCommand)
+                  let parsed = P.runPure $ P.readMarkdown ( def { P.readerExtensions = P.extensionsFromList [P.Ext_raw_html, P.Ext_raw_tex, P.Ext_tex_math_dollars, P.Ext_latex_macros, P.Ext_hard_line_breaks] } ) (c^.cCommand)
                       P.Pandoc _ bs = either (error . show) id parsed
                   in blocks bs
                 | otherwise =
@@ -49,7 +50,14 @@ fromRight _ = error "This error is not handled"
 
 toMarkdown :: P.Pandoc -> B.ByteString
 -- toMarkdown = B.pack . P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
-toMarkdown = B.fromStrict . E.encodeUtf8 . fromRight . P.runPure . P.writeMarkdown (def { P.writerExtensions = P.enableExtension P.Ext_hard_line_breaks (P.enableExtension P.Ext_raw_tex P.githubMarkdownExtensions), P.writerWrapText = P.WrapPreserve })
+toMarkdown = B.fromStrict . E.encodeUtf8 . fromRight . P.runPure . P.writeMarkdown (def { P.writerExtensions = P.enableExtension P.Ext_hard_line_breaks (P.extensionsFromList [P.Ext_raw_tex, P.Ext_tex_math_dollars, P.Ext_latex_macros] <> P.githubMarkdownExtensions), P.writerWrapText = P.WrapPreserve })
+
+toMarkdownKaTeX :: P.Pandoc -> B.ByteString
+-- toMarkdown = B.pack . P.writeMarkdown (def { P.writerExtensions = P.githubMarkdownExtensions })
+toMarkdownKaTeX = toMarkdown . katexify
+  where katexify = P.walk makeDisplayMath
+        makeDisplayMath (P.Math _ x) = P.Math P.DisplayMath x
+        makeDisplayMath x = x
 
 toHtml :: P.Pandoc -> B.ByteString
 toHtml = B.fromStrict . E.encodeUtf8 . fromRight . P.runPure . P.writeHtml5String def
