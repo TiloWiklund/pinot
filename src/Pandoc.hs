@@ -32,7 +32,7 @@ fromNotebook :: N.Notebook -> P.Pandoc
 fromNotebook nb = P.setTitle title $ P.doc $ foldMap block (nb^.nCommands)
   where title = P.text (T.unpack (nb^.nName))
         block c | c^.cLanguage == "md" =
-                  let parsed = P.runPure $ P.readMarkdown ( def { P.readerExtensions = P.extensionsFromList [P.Ext_raw_html, P.Ext_raw_tex, P.Ext_tex_math_dollars, P.Ext_latex_macros, P.Ext_hard_line_breaks] } ) (c^.cCommand)
+                  let parsed = P.runPure $ P.readMarkdown ( def { P.readerExtensions = P.extensionsFromList [P.Ext_raw_html, P.Ext_raw_tex, P.Ext_tex_math_dollars, P.Ext_latex_macros, P.Ext_hard_line_breaks, P.Ext_fenced_code_attributes, P.Ext_fenced_code_blocks, P.Ext_inline_code_attributes, P.Ext_backtick_code_blocks] } ) (c^.cCommand)
                       P.Pandoc _ bs = either (error . show) id parsed
                   in blocks bs
                 | otherwise =
