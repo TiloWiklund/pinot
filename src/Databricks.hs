@@ -384,7 +384,9 @@ dbCleanLatexBlock :: T.Text -> T.Text
 dbCleanLatexBlock t = foldl substitute t weirdDBSyntax
   where substitute s (f, t) = T.replace f t s
         weirdDBSyntax = [ ("\\\\\\\\", "\\\\")
-                        , ("\\_", "_") ]
+                        , ("\\_", "_")
+                        , ("\\\\{", "\\{")
+                        , ("\\\\}", "\\}") ]
 
 dbCleanLatex :: T.Text -> T.Text
 dbCleanLatex = cleanInlineLatex . cleanDisplayLatex
