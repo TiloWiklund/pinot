@@ -140,12 +140,12 @@ instance ToJSON ZeppelinNotebook where
 
 instance FromJSON ZeppelinNotebook where
   parseJSON = withObject "ZeppelinNotebook" $ \v -> ZN
-    <$> v .: "angularObjects"
-    <*> v .: "config"
+    <$> v .:? "angularObjects"
+    <*> v .:? "config"
     <*> v .: "paragraphs"
     <*> v .: "name"
-    <*> v .: "id"
-    <*> v .: "info"
+    <*> v .:? "id"
+    <*> v .:? "info"
 
 instance ToJSON ZeppelinConfig where
   toEncoding (ZC looknfeel) = pairs ("looknfeel" .= looknfeel)

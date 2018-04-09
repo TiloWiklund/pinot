@@ -19,31 +19,9 @@ import Databricks as D
 import Notebook as N
 import Pandoc as P
 import Utils
+import Formats
 
 import Options.Applicative as Opt
-
-type SourceFormat = String -> B.ByteString -> Either String [(String, N.Notebook)]
-type TargetFormat = [(String, N.Notebook)] -> [(String, B.ByteString)]
-
-databricksDBCSource :: SourceFormat
-databricksDBCSource f x = over (each . _2) D.toNotebook <$> fromByteStringArchive x
--- databricksDBCSource f x = concatMapM (uncurry databricksJSONSource) jsonFiles
---   where archive = Zip.toArchive x
---         jsonPaths = filter isJSON (Zip.filesInArchive archive)
---         isJSON :: FilePath -> Bool
---         isJSON f = let f' = map C.toLower f
---                    in any (`isSuffixOf` f') [".scala", ".py", ".r", ".sql"]
---         jsonFiles = map extract jsonPaths
---         extract f = let Just e = Zip.findEntryByPath f archive
---                     in (f, Zip.fromEntry e)
-
-databricksJSONSource :: SourceFormat
-databricksJSONSource f x = (singleton . D.toNotebook) <$> D.fromByteString x
-  where singleton y = [(f, y)]
-
-zeppelinSource :: SourceFormat
-zeppelinSource f x = (singleton . Z.toNotebook) <$> Z.fromByteString x
-  where singleton y = [(f, y)]
 
 sourceFormat :: Parser SourceFormat
 sourceFormat = parseFormat <$> sourceFormat'
@@ -55,30 +33,6 @@ sourceFormat = parseFormat <$> sourceFormat'
                                   <> short 'f'
                                   <> metavar "FROM"
                                   <> help "Format to convert from" )
-
-databricksJSONTarget :: TargetFormat
-databricksJSONTarget = over (each . _2) compile
-  where compile = D.toByteString . D.fromNotebook
-
-zeppelinTarget :: TargetFormat
-zeppelinTarget = over (each . _1) (swapExtension ".json") . over (each . _2) compile
-  where compile = Z.toByteString . Z.fromNotebook
-
-markdownTarget :: TargetFormat
-markdownTarget = over (each . _1) (swapExtension ".md") . over (each . _2) compile
-  where compile = P.toMarkdown . P.fromNotebook
-
-markdownTargetKaTeX :: TargetFormat
-markdownTargetKaTeX = over (each . _1) (swapExtension ".md") . over (each . _2) compile
-  where compile = P.toMarkdownKaTeX . P.fromNotebook
-
-htmlTarget :: TargetFormat
-htmlTarget = over (each . _1) (swapExtension ".html") . over (each . _2) compile
-  where compile = P.toHtml . P.fromNotebook
-
-pandocTarget :: TargetFormat
-pandocTarget = over (each . _1) (swapExtension ".pandoc") . over (each . _2) compile
-  where compile = P.toNative . P.fromNotebook
 
 targetFormat :: Parser TargetFormat
 targetFormat = parseFormat <$> targetFormat'
