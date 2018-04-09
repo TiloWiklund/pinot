@@ -21,15 +21,6 @@ import Formats
 
 import Options.Applicative as Opt
 
-format :: Parser NotebookFormat
-format = parseFormat <$> format'
-  where parseFormat "zeppelin" = zeppelinFormat
-        parseFormat _ = error "Unknown target format"
-        format' = strOption ( long "format"
-                              <> short 'f'
-                              <> metavar "FORMAT"
-                              <> help "Format of the notebook" )
-
 langTag :: T.Text -> T.Text
 langTag command = if maybe False (== '%') ((T.toStrict command) `safeIndex` 0)
                   then T.drop 1 (head (T.lines command))
@@ -45,9 +36,20 @@ prependCodes' c nList = over (each . _2) (prependCode c) nList
 prependCodes :: B.ByteString -> Either String [(String, N.Notebook)] -> Either String [(String, N.Notebook)]
 prependCodes c nList = (prependCodes' c) <$> nList
 
+format :: Parser NotebookFormat
+format = parseFormat <$> format'
+  where parseFormat "databricks-json" = databricksJSONFormat
+        parseFormat "zeppelin"        = zeppelinFormat
+        parseFormat _ = error "Unknown target format"
+        format' = strOption ( long "format"
+                              <> short 'f'
+                              <> metavar "FORMAT"
+                              <> help "Format of the notebook" )
+
 targetFormat :: Parser TargetFormat
 targetFormat = parseFormat <$> targetFormat'
-  where parseFormat "zeppelin"        = zeppelinTarget
+  where parseFormat "databricks-json" = databricksJSONTarget
+        parseFormat "zeppelin"        = zeppelinTarget
         parseFormat _ = error "Unknown target format"
         targetFormat' = strOption ( long "to"
                                     <> short 't'
@@ -56,8 +58,7 @@ targetFormat = parseFormat <$> targetFormat'
 
 sourceFormat :: Parser SourceFormat
 sourceFormat = parseFormat <$> sourceFormat'
-  where parseFormat "databricks"      = databricksDBCSource
-        parseFormat "databricks-json" = databricksJSONSource
+  where parseFormat "databricks-json" = databricksJSONSource
         parseFormat "zeppelin"        = zeppelinSource
         parseFormat _ = error "Unknown source format"
         sourceFormat' = strOption ( long "from"

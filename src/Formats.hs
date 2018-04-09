@@ -53,3 +53,4 @@ pandocTarget = over (each . _1) (swapExtension ".pandoc") . over (each . _2) com
   where compile = P.toNative . P.fromNotebook
 
 zeppelinFormat = (zeppelinSource, zeppelinTarget)
+databricksJSONFormat = (databricksJSONSource, databricksJSONTarget)
