@@ -269,7 +269,7 @@ instance FromJSON DBCommand where
     <*> v .:? "origId"
     <*> v .:? "submitTime"
     <*> v .:? "diffInserts"
-    <*> v .: "position"
+    <*> v .:  "position"
 
 instance ToJSON DBNotebook where
   toJSON dbn = object [ "commands" .= (dbn^.dbnCommands)
