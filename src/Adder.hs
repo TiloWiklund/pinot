@@ -6,35 +6,29 @@ import qualified Data.ByteString.Lazy.Char8 as B (putStrLn)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as E
 import Data.Monoid ((<>))
-import Data.List (isSuffixOf)
 import Control.Monad (when, forM_)
 import System.FilePath ((</>))
 
 import Control.Lens
 
-import Zeppelin as Z
-import Databricks as D
 import Notebook as N
-import Pandoc as P
 import Utils
 import Formats
 
-import Options.Applicative as Opt
+import Options.Applicative as Opt hiding (command)
 
 langTag :: T.Text -> T.Text
-langTag command = if maybe False (== '%') ((T.toStrict command) `safeIndex` 0)
+langTag command = if T.toStrict command `safeIndex` 0 == Just '%'
                   then T.drop 1 (head (T.lines command))
                   else "scala"
 
 prependCode :: B.ByteString -> N.Notebook -> N.Notebook
-prependCode c n = set nCommands (codeBlock : n^.nCommands) n
-  where codeBlock = C (T.toStrict $ langTag (E.decodeUtf8 c)) (T.toStrict $ T.unlines $ tail $T.lines $ E.decodeUtf8 c) Nothing False False
-
-prependCodes' :: B.ByteString -> [(String, N.Notebook)] -> [(String, N.Notebook)]
-prependCodes' c nList = over (each . _2) (prependCode c) nList
+prependCode c = over nCommands (codeBlock :)
+  where codeBlock = C (T.toStrict $ langTag (E.decodeUtf8 c)) (T.toStrict $ dropFirstLine $ E.decodeUtf8 c) Nothing False False
+        dropFirstLine = T.unlines . tail . T.lines
 
 prependCodes :: B.ByteString -> Either String [(String, N.Notebook)] -> Either String [(String, N.Notebook)]
-prependCodes c nList = (prependCodes' c) <$> nList
+prependCodes c nList = over (each . _2) (prependCode c) <$> nList
 
 format :: Parser NotebookFormat
 format = parseFormat <$> format'
@@ -45,26 +39,6 @@ format = parseFormat <$> format'
                               <> short 'f'
                               <> metavar "FORMAT"
                               <> help "Format of the notebook" )
-
-targetFormat :: Parser TargetFormat
-targetFormat = parseFormat <$> targetFormat'
-  where parseFormat "databricks-json" = databricksJSONTarget
-        parseFormat "zeppelin"        = zeppelinTarget
-        parseFormat _ = error "Unknown target format"
-        targetFormat' = strOption ( long "to"
-                                    <> short 't'
-                                    <> metavar "TO"
-                                    <> help "Format to convert to" )
-
-sourceFormat :: Parser SourceFormat
-sourceFormat = parseFormat <$> sourceFormat'
-  where parseFormat "databricks-json" = databricksJSONSource
-        parseFormat "zeppelin"        = zeppelinSource
-        parseFormat _ = error "Unknown source format"
-        sourceFormat' = strOption ( long "from"
-                                  <> short 'f'
-                                  <> metavar "FROM"
-                                  <> help "Format to convert from" )
 
 inputPaths :: Parser [FilePath]
 inputPaths = some (Opt.argument str (metavar "INPUT NOTEBOOKS"))
@@ -83,7 +57,7 @@ run = Run <$> format <*> inputCode <*> inputPaths <*> optional outputPath
 opts :: ParserInfo Run
 opts = info (run <**> helper)
   ( fullDesc
-  <> progDesc "Adds the contents of the provided textfile as the first cell of the provided notebook." )
+  <> progDesc "Adds the contents of the provided text file as the first cell of the provided notebook." )
 
 main  :: IO ()
 main = do
@@ -94,7 +68,7 @@ main = do
                   else do streams <- mapM B.readFile inputs
                           return (zip inputs streams)
   code <- B.readFile codefile
-  let attempt = to <$> concatMapM ((prependCodes code) . (uncurry from)) inputStreams
+  let attempt = to <$> concatMapM (prependCodes code . uncurry from) inputStreams
       results  = either (error . show) id attempt
 
   when (null results) (error "Nothing to output.")
