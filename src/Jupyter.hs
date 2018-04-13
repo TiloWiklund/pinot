@@ -270,6 +270,29 @@ instance ToJSON JupyterCell where
                 , "metadata" .= cellMetadata jc
                 , "source" .= T.lines (jc^.jcSource) ]
 
+instance ToJSON JupyterLanguage where
+  toEncoding jl = pairs ( "name" .= (jl^.jlName)
+                          <> "version" .=? (jl^.jlVersion)
+                          <> "codemirror_mode" .=? (jl^.jlCodeMirrorMode))
+
+  toJSON jl = objectMaybe [ "name" .= (jl^.jlName)
+                          , "version" .=? (jl^.jlVersion)
+                          , "codemirror_mode" .=? (jl^.jlCodeMirrorMode) ]
+
+instance FromJSON JupyterLanguage where
+  parseJSON = withObject "JupyterLanguage" $ \v -> JL
+    <$> v .: "language"
+    <*> v .:? "version"
+    <*> v .:? "codemirror_mode"
+
+instance ToJSON JupyterKernel where
+  toEncoding jk = pairs ( "name" .= (jk^.jkName))
+  toJSON jk = objectMaybe [ "name" .= (jk^.jkName) ]
+
+instance FromJSON JupyterKernel where
+  parseJSON = withObject "JupyterKernel" $ \v -> JK
+    <$> v .: "name"
+
 -- instance FromJSON ZeppelinParagraph where
 --   parseJSON = withObject "Paragraph" $ \v -> ZP
 --     <$> v .:? "focus"
